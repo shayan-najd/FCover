@@ -63,6 +63,7 @@ encloseDataNum(Exp,_Name,Num)->
 %------------------------------------------------------------------
 enclose(Exp,_,_) when element(2,Exp)=<0, (abs(element(2,Exp)) bor 4) == abs(element(2,Exp))->
     Exp;
+%enclose(Exp,LogCode,VarName)->    
 enclose(Exp,LogCode,VarName)->
     {'try',-14,
      [Exp],
