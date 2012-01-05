@@ -5,86 +5,33 @@
 \usepackage{hhline}
 \usepackage{array}
 \usepackage{color}
-\usepackage[dvips, bookmarks, colorlinks=false, pdfborder={0 0 0}, pdftitle={Testing Functional-Concurrent Code by Code Coverage},
+\usepackage[dvips, bookmarks, colorlinks=false, pdfborder={0 0 0}, pdftitle={Code Coverage in Functional Concurrent Programming},
  pdfauthor={Shayan Najd Javadipour}, pdfsubject={Project Report}, pdfkeywords={}]{hyperref}
 \setcounter{secnumdepth}{0}
 \makeatletter
 \newcommand\arraybslash{\let\\\@arraycr}
 \makeatother
 \lstset{language=erlang}
-\title{Code Coverage in Functional Concurrent Programs}
+\title{Code Coverage in Functional Concurrent Programming}
 \author{Shayan Najd Javadipour}
 \date{Fall 2011}
 \begin{document}
 \maketitle
 \begin{abstract}
-Code coverage is a measurements used in the software testing . In this project we developed a tool to improve the process of testing programs written in a functional concurrent
- language, namely Erlang. We studied several approaches for testing software including different criteria and metrics for measuring quality of the tests.  Our tool uses code coverage information as
- a stopping function for automated property based test-case generations.
+Code coverage is a measure used in software testing. It describes the degree to which the source code of a program has been tested \cite{huizinga2007automated}. However, code coverage metrics are mostly defined with the focus on the imperative languages. When the target is a functional language, to be more effective, these metrics should be redefined.
 
-In the our method, We first extract the abstract syntax tree (AST) of the input Erlang code and then we generate instrumented code by transforming the
- AST to the
- semantically equivalent AST (except the instrumentation parts that have orthogonal semantics). Instrumentation is used to log information useful for
- measuring code coverage. 
+In this project, we studied existing code coverage metrics and then we defined an equivalent criterion specialized for functional concurrent languages. Based on this metric, we developed a tool measuring code coverage in a functional concurrent language, namely Erlang. We designed the tool in a way that its output can be used to define a stopping function for automated property based test case generation.
 
-In this report first we describe related concepts and methods within the literature and in the end of the each section, we discuss our interpretation
-and implementation. In literature, Code coverage metrics are mostly defined based on imperative style of programming. We discuss our equivalent
- definitions for functional style. We implemented some of these methods in our tool and we explain our approach. Later in the second chapter, we
- discuss our approach for testing Erlang code including the necessary code transformations for instrumentation. The third chapter describes the
- structure of the tool itself. 
+The tool first extracts the abstract syntax tree (AST) of the input Erlang code and then it generates an instrumented code by transforming the AST to the semantically equivalent AST. This instrumentation is used to log the data useful for measuring the code coverage. In the last step, the logged data is post-processed to generate the final coverage information.  
+
+In this report, first we describe the existing concepts related to code coverage and in the end of each section, we discuss our interpretation and implementation. Later in the second chapter, we discuss our approach for measuring code coverage in an Erlang code including the necessary code transformations for the instrumentation. We also describe the application of this coverage information in automated property based test case generation. The third chapter describes the structure of the tool itself. 
 \end{abstract}
 \tableofcontents
 \listoffigures
 \chapter{Code Coverage in Theory}
 \newpage
-\section{Functional-Concurrent Language}
- Undefined!
-\section{Software Testing}
-Software development is a development process during which programs are produced. Like many other development processes, products should be tested to
- assure the expected quality.
-
-There are several levels for testing programs based on the target in the code, including:
-\begin{itemize}
- \item Simple Blocks: Unit testing is a process that small units/blocks of the code are tested.
- \item Complex Blocks: Testing bigger parts of the software composed of smaller units/blocks is called integration testing. Usually in this level the
- blocks themselves have passed the unit tests and their interactions are tested.
- \item System: The whole system including all the parts are tested in System Testing. 
- \item Deployed System: System integration testing tests functionality of the system in the final environment.
-\end{itemize}
-Also there are different aspects of the software that should be tested including:
-\begin{itemize}
- \item Performance: Performance and load testing tests are to determine how the software performs under the execution of different test use-cases.
- \item Security: Security aspects of the software are tested by security testing and penetration testing.
-\end{itemize}
-
-In this work, we are focusing on functional-concurrent codes and structured unit-testing. Functions are ``software units'' in a functional language.
-Let's assume software unit in state $S$ (environment), is a well-behaving function $f:D \rightarrow R$
-\footnote{If the compiler and the run-time system for the programming language work exactly as expected, then at least in theory the functional code
- behaves the same for the identical inputs}.
-Test suite $T$ is a set of test-cases. A test-case $c$, $c \in T$ is an input to the software, designed to discover presence (or probability of absence)
- of ``bugs'' in the code. Therefore, a test-case should be valid in the domain ($D$) of the software($c \in D$).
-Sometimes for functions, input domain ($D$) is ``bigger'' than the actual domain ($D',D' \subseteq D$). By actual input domain, we mean a domain that 
-function is semantically defined in. For example, function 
-$sqr:Int \rightarrow Int$ calculating square root of the input, is syntactically defined over all the integers including negative integers but 
-semantically square root of a negative integer is undefined. A test-case can be designed to be member of syntactic domain $D$ or actual domain $D'$.     
-We can define testing a function $f$ using provided specification ($Spec:D \times R \rightarrow Boolean$) by test suite $T$ as
- $\forall c \in T, Spec (c,f(c))$ \footnote{The result usually includes failing test-cases, since later on, they can be used to reveal the bugs.}, where
- $c$ is a test-case and result is a boolean vector. Each entry in this boolean vector indicates whether corresponding
-test-case passes or fails testing. If the test fails,it means there is a bug in software and the
-test case reveals it. If the test passes, it increases probability of absence of bugs but this way. One can never
-deduce absence of the defects in the code by testing \cite{dijkstra1970notes,Dahl:1972:SP:1243380}.
-
-\section{Property Based Testing}
-There are different approaches to declare specifications of the code; descriptions that specify how the program is supposed to behave. One way is to
- declare properties of each unit/block in the code. The properties are logical expressions modeling expected behaviors of the system. 
-In this project we use Quickcheck domain specific language(DSL) to define properties of the functions. Quickcheck uses these properties
-to automatically generate test cases. %ToDo: references needed
-
 \section{Code Coverage}
-Code coverage is a measurement indicating how much (percentage) of the actual code is tested, calculated by monitoring behavior of the program during
- execution of tests. Using code coverage metrics is used in White-Box testing where the source code of the program is available. Code coverage criterion
- depends on the language that the program is coded in. Code coverage can be used as a metric to evaluate the quality of the test cases. A test suite
- has a better quality if it achieves a higher number in a specific code coverage metric. Code coverage criterion is used as a notion for test adequacy
+Code coverage is a measure indicating how much of the actual code is exercised in the process of testing. It is calculated by monitoring behavior of the program during execution of tests. Using code coverage metrics is used in White-Box testing where the source code of the program is available. Code coverage criterion depends on the language that the program is coded in. Code coverage can be used as a metric to evaluate the quality of the test cases. A test suite has a better quality if it achieves a higher number in a specific code coverage metric. Code coverage criterion is used as a notion for test adequacy
  \cite{Zhu:1997:SUT:267580.267590}.
 In this project we combined several code coverage metrics to define a better metric while preserving the efficiency. It was necessary to redefine some
  of these metrics for functional style. It is discussed in details in the following sections.    
