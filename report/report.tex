@@ -18,125 +18,99 @@
 \begin{document}
 \maketitle
 \begin{abstract}
-Code coverage is a measure used in software testing. It describes the degree to which the source code of a program has been tested \cite{huizinga2007automated}. However, code coverage metrics are mostly defined with the focus on the imperative languages. When the target is a functional language, to be more effective, these metrics should be redefined.
+Code coverage is a measure indicating how much of the actual code is exercised in the process of testing. However, code coverage metrics are mostly defined with the focus on the imperative languages. When the target is a functional language, to be more effective, these metrics should be redefined.
 
-In this project, we studied existing code coverage metrics and then we defined an equivalent criterion specialized for functional concurrent languages. Based on this metric, we developed a tool measuring code coverage in a functional concurrent language, namely Erlang. We designed the tool in a way that its output can be used to define a stopping function for automated property based test case generation.
+In this project, we studied existing code coverage metrics and then we defined an equivalent criterion specialized for functional languages. Based on this metric, we developed a tool, named \emph{FCover}, measuring code coverage in a functional concurrent language, namely Erlang. We designed the tool in a way that its output can be used to define a stopping function for automated property based test case generation.
 
-The tool first extracts the abstract syntax tree (AST) of the input Erlang code and then it generates an instrumented code by transforming the AST to the semantically equivalent AST. This instrumentation is used to log the data useful for measuring the code coverage. In the last step, the logged data is post-processed to generate the final coverage information.  
+\emph{FCover} first extracts the abstract syntax tree (AST) of the input Erlang code and then it generates an instrumented code by transforming the AST to the semantically equivalent AST. This instrumentation is used to log the data useful for measuring the code coverage. In the last step, the logged data is post-processed to generate the final coverage information.  
 
 In this report, first we describe the existing concepts related to code coverage and in the end of each section, we discuss our interpretation and implementation. Later in the second chapter, we discuss our approach for measuring code coverage in an Erlang code including the necessary code transformations for the instrumentation. We also describe the application of this coverage information in automated property based test case generation. The third chapter describes the structure of the tool itself. 
 \end{abstract}
 \tableofcontents
-\listoffigures
+%\listoffigures
 \chapter{Code Coverage in Theory}
 \newpage
 \section{Code Coverage}
-Code coverage is a measure indicating how much of the actual code is exercised in the process of testing. It is calculated by monitoring behavior of the program during execution of tests. Using code coverage metrics is used in White-Box testing where the source code of the program is available. Code coverage criterion depends on the language that the program is coded in. Code coverage can be used as a metric to evaluate the quality of the test cases. A test suite has a better quality if it achieves a higher number in a specific code coverage metric. Code coverage criterion is used as a notion for test adequacy
- \cite{Zhu:1997:SUT:267580.267590}.
-In this project we combined several code coverage metrics to define a better metric while preserving the efficiency. It was necessary to redefine some
- of these metrics for functional style. It is discussed in details in the following sections.    
+Code coverage is a measure indicating how much of the actual code is exercised in the process of testing. Code coverage criterion is used as a notion for test adequacy.\cite{Zhu:1997:SUT:267580.267590}
+
+In this project, we studied existing code coverage metrics and then we defined an equivalent criterion specialized for functional languages. This equivalent criterion arguably provides a stronger notion of code coverage and it is comparably efficient. In the following sections, we discuss this equivalent metric in more detail.
 
 \section{Statement Coverage}
-Also closely named ``Node Coverage'', ``Line Coverage'', ``Segment Coverage'' \cite{Ntafos:1988:CST:630792.631017},
- ``Basic Block Coverage'' and ``C1'' \cite{beizer2002software};
- This metric monitors and reports
- execution of each “executable term” in the code, while executing test-cases. Statement coverage criterion can
- be defined as: 
+Statement coverage---also closely named \emph{node coverage}, \emph{line coverage}, \emph{segment coverage} \cite{Ntafos:1988:CST:630792.631017}, \emph{basic block coverage} and \emph{C1} \cite{beizer2002software}---is defined as: 
 
-“A set $P$ of execution paths, satisfies the statement coverage criterion if and only if for all nodes $n$ in the flow graph, there is at least one path $p$
- in $P$ such that node $n$ is on the path $p$.“\cite{Zhu:1997:SUT:267580.267590}
+"A set $P$ of execution paths, satisfies the statement coverage criterion if and only if for all nodes $n$ in the flow graph, there is at least one path $p$ in $P$ such that node $n$ is on the path $p$."\cite{Zhu:1997:SUT:267580.267590}
 
-This method is also called “Node Coverage”, because node is the main concept in definition of this criterion. The other name of this method is line coverage
- since in some programs there is only one statement per line and therefore each line introduces one node.
-
-There are different definitions for “executable term” or “node in the flow graph”, resulting in different statement coverage implementations, such as:
+There are several different interpretations for "node in the flow graph" in the above mentioned definition such as:
 
 \begin{enumerate}
- \item Statements (expressions with side effects) -- statement coverage
- \item A single line of code -- line coverage
- \item A single basic block (block of code with no branching) -- basic block coverage
+ \item Statements (statement coverage)
+ \item A single line of code (line coverage)
+ \item A single basic block; block of code with no branching (basic block coverage)
  \item Expressions 
  \item etc
 \end{enumerate}
 
-Usually flow graphs only model execution flow without considering ``exception flows'', therefore they are incomplete. By the term, ``exception flow'' we
- mean exceptions, errors, exit signals and any sort of termination/branching without control-flows.For example term $throw ``error''$ in some languages
- (C++ family), creates a branching in the execution flow. If ``exception'' flows are included inside normal execution flow graph, then we have a complete
- execution flow graph. Based on this new constraint (complete flow graph) we can present a stronger definition for statement coverage. 
+Often, control flow graphs (CFG) only model the execution flow of programs without considering the exception flows. Exception flow is an execution flow initiated by exceptions, errors or exit signals. For example, the term $throw "error"$  branches the main execution flow by generating an exception. A complete CFG includes both the normal execution flows and the exception flows. Based on this definition of the CFG, we can redefine node coverage which is arguably more precise.
 
-In this project we define a special implementation of statement coverage targeting functional-concurrent languages (reactive model). Since everything in a
- functional language is an expression, comprehensive definition of “node in the flow graph” would be expressions. It is important to define how big an
- expression representing a node is. The type and number of sub-expressions along with the desired coverage precision decide. Anyway in our implementation
- the size of expression is not of importance because we use special optimization later on.  
- 
-Also we consider complete flow graph.
- In a functional language every expression should return a value and there is no looping\footnote{In fact there is looping in functional languages for 
-example recursion (co-recursion) is a way to simulate looping. But the main point is that in unit testing of one single function we just consider function
- calls (even self-calls) as abstract expressions that either terminate and return value or don't terminate at all. In the case of non-termination we can
- consider a new exceptional branch but usually they can be merged with existing exception flow for the case that called function returns an error.}
-, therefore flow graph for functional language is acyclic.
+In this project, we define a special version of node coverage targeting functional languages. Since almost everything in a functional language is an expression, comprehensive definition of "node in the flow graph" would be "expression in a program". It is important to define how big the size of the expression representing a node should be and it is decided by the type and number of the subexpressions, along with the desired coverage precision. Anyway, in our implementation the size of the expression is not of importance because we use a special optimization later on.   
 
-For representing complete flow graph in a functional language, we add one virtual node(fork) before each node representing the branching in case of
- exceptions. The virtual node is not considered in the statement coverage but the exception node should be covered if exception handling mechanism
- is going to be tested. This virtual fork node has a branch to an exception
-node. Exception node is a normal node that produces the exception and has an edge to the ``Final Node'' (or passes it to exception handling structure).
-The flow graph starts with ``Initial Node'' and ends with ``Final Node''. Both have no semantical operation. Here we can define two types of
- statement coverage based on the complete graph, the first one considers the exception node as a normal node that should be covered in testing and the
- weaker form that doesn't include exception nodes in coverage measurements. Our implementation is of the first type, covering all the nodes including the 
-exception nodes.
+The CFG starts with the \emph{start node} and ends with the \emph{final node}. They both have no semantical operation.
 
-We also implemented some form of optimization. We split the flow graph into smaller parts forming a tree\footnote{Binary tree, since decisions are
- boolean}.In a complete flow graph we define cutting-point by:  
+For representing the complete CFG in a functional language, the CFG should include exception flows. For this purpose, we add one extra virtual node, a fork, exactly before each node and it has an edge to the exception node. This virtual node represents the branching when an exception is generated. The exception node is a normal node representing the execution flow of the program when the exception is generated. It has an edge to the \emph{final node} or to the initial node of an exception handling structure. 
 
+For example, the expression $1/X$ is represented as three nodes in the CFG:
 \begin{enumerate}
- \item Immediately after the Initial node is a cutting-point
- \item Immediately before the Final node is a cutting-point
- \item Immediately after the first node(non-branching) in the beginning of each branch (including exceptional branches\footnote{Each exceptional branch,
- has only one node which is the exception node.}) 
+ \item Virtual node: a fork with the condition $X$\neq$0$. It has an edge labeled $true$ to the normal node and an edge labeled $false$ to the exception node.
+ \item Normal node: is a node that represents the expression when there is no exception. It has an edge to the node that represents the next expression in the execution flow
+ \item Exception node: is a node in the exception flow that represents the generation of the exception; for example, $throw "Division by zero"$. It has an edge to either \emph{final node} or to the initial node of the exception handling structure
 \end{enumerate}
 
+Here we can define two types of node coverage based on the complete graph, the first one considers the exception node as a normal node that should be covered in testing and the weaker form that does not include exception nodes in the coverage measurements. The virtual nodes are ignored in both types. Our implementation is of the first type, covering all the nodes including the exception nodes.
 
-And parts(tree) are the distinct connected nodes between two consecutive cutting-point. For complete strong node coverage we just need to make sure we have
- visited all the leaves of these parts. Because each leaf in this flow tree can uniquely define a path where execution reaches chain of expressions in the
- second category (no exception, no control flow),
- the path and executes them all.
+In a functional language, every expression should return a value and there is no looping\footnote{In fact, there is looping in functional languages; for example, recursion is a way to simulate looping. But the main point is that in unit testing we focus on one single function. In that function, we consider function calls---even self calls---as abstract expressions. These abstract expressions either terminate and return a value, or do not terminate at all. In the case of nontermination we can consider a new exception flow but usually they can be merged with the existing exception flow. If we merge the two, a nontermination is equivalent to the case that the callee returns an exception.}, therefore the CFG of a functional language is acyclic.
 
-In summary in our implementation we monitor execution of:
+We also implemented some form of optimization. We cut the CFG on the specific cut-points and that would break the CFG into smaller parts; the distinct set of connected nodes between the two consecutive cut-points. Each of these smaller parts form a tree\footnote{Binary tree, since decisions are boolean}.
+
+In a complete CFG, we define cut-points by:  
 
 \begin{enumerate}
- \item exception nodes
- \item node after the initial node (starting node)
- \item nodes at the beginning of each branch (first node in each clause)  
+ \item Immediately after the \emph{start node} is a cut-point
+ \item Immediately before the \emph{final node} is a cut-point
+ \item Immediately after the first node in the beginning of each branch, including the exceptional branches\footnote{Each exceptional branch has only one node which is the exception node.} 
+\end{enumerate}
+
+To achieve full node coverage, we need to make sure that all the leaves of these smaller parts are visited. That is because each leaf in these trees can uniquely define a path in the tree and when the execution flow reaches the beginning of the path, all the expressions in the path are executed.
+
+In summary, in our implementation we monitor the execution of:
+
+\begin{enumerate}
+ \item the exception nodes
+ \item the fist node after the \emph{start node}
+ \item the nodes at the beginning of each branch
 \end{enumerate}
 
 \section{Decision Coverage}
-Along with ``All-Edges Coverage'', ``C2'' and ``Decision-Decision-Path Testing''; Decision coverage and branch coverage are closely related subjects that
- can be defined as:
+Along with \emph{all-edges coverage}, \emph{C2} and \emph{decision-decision-path testing}; \emph{decision coverage} and \emph{branch coverage} are closely related.
 
-“A set $P$ of execution paths satisfies the branch coverage criterion if and only if for all
- edges $e$ in the flow graph,there is at least one path $p$ in $P$ such that $p$ contains the edge $e$.”\cite{Zhu:1997:SUT:267580.267590}
+Branch coverage criterion is defined as:
 
-and decision coverage
+"A set $P$ of execution paths satisfies the branch coverage criterion if and only if for all edges $e$ in the flow graph,there is at least one path $p$ in $P$ such that $p$ contains the edge $e$."\cite{Zhu:1997:SUT:267580.267590}
 
-“Decision Coverage - Every point of entry and exit in the program has been invoked at least once and every decision in the program has taken on all
- possible outcomes at least once.“\cite{cast-10}
+Decision coverage is defined as:
 
-and Decision is defined as:
+“Decision Coverage - Every point of entry and exit in the program has been invoked at least once and every decision in the program has taken on all possible outcomes at least once.“\cite{cast-10}
 
-“A Boolean expression composed of conditions and zero or more Boolean operators. A decision without a Boolean operator is a condition. If a condition
- appears more than once in a decision, each occurrence is a distinct condition”\cite{cast-10}
+And Decision is defined as:
 
-About the repetition of conditions there are different approaches resulting in different implementations. There is an important to notice that in the
- definition of decision coverage we included all the boolean expressions where in branch coverage with just considered the one in the control flows 
-(or related to).
+"A Boolean expression composed of conditions and zero or more Boolean operators. A decision without a Boolean operator is a condition. If a condition appears more than once in a decision, each occurrence is a distinct condition."\cite{cast-10}
 
 Where Condition is:
 
 “A Boolean expression containing no Boolean operators.”\cite{cast-10}
 
-In the beginning branch coverage may look the same as statement coverage for functional programs since there is no loop control flow or goto constructs but
- that is not exactly true. The exception handling is one of the control flow structures that violates the rule of “if you visit all the nodes, you have
- visited all the edges.”
+It is important to notice that in the definition of decision coverage all the boolean expressions are included where in branch coverage with just considered ones immediately before each fork.
+
+In the beginning, branch coverage may look the same as node coverage for a functional program since its CFG is acyclic but that is not enough. The exception handling is one of the control flow structures that violates the rule of “if you visit all the nodes, you have visited all the edges.”. 
 
 For example consider the following code:
  
@@ -151,12 +125,12 @@ For example consider the following code:
 	finished. 
 \end{lstlisting}
 
-The test suite of $[1,3,2]$ achieves $100\%$ statement coverage (weaker form, excluding exception nodes) since it covers all the nodes in its execution
+The test suite of $[1,3,2]$ achieves $100\%$ node coverage (weaker form, excluding exception nodes) since it covers all the nodes in its execution
  paths but not the edge from node of exception in the first clause to the catch clause as it is in $f(0)$. Recursion, function calls and message passing
- are also another form of control flow in functional-concurrent programs that are treated as abstract values (as mentioned in the previous section) in
+ are also another form of control flow in functional concurrent programs that are treated as abstract values (as mentioned in the previous section) in
  unit testing.
 
-By our implementation of node coverage in complete flow graph(described in the previous section), we can consider coverage of all the edges (poths) from
+By our implementation of node coverage in complete CFG, we can consider coverage of all the edges from
  each former cutting-point to latter ones (if it is possible). In the other word, if we cover all the leaf nodes in the exection trees described in the
  previous section we achieve $100\%$ branch coverage and if we miss one of these leaf nodes we miss the edges in the path from the closest fork in the
  tree to the missed node.
@@ -167,7 +141,7 @@ For implementing decision coverage we add monitors before every boolean expressi
 
 %Todo: complete
 There are some difficulties in implementing decision coverage criterion (or metrics based on it) for dynamic-typed functional languages like Erlang since
- they don't have clear answer to question: ``What is boolean expression?''. In our view, the main spirit is to test the important factors determining the
+ they do not have clear answer to question: "What is boolean expression?". In our view, the main spirit is to test the important factors determining the
  program logic for different cases. Here several approxiamtions can be applied. 
 
 In our implemenation $Todo: not complete$.  
@@ -194,7 +168,7 @@ f(X) ->
     end.  
 \end{lstlisting}
 
-Such analysis tends to be rather difficult due to the dynamic nature of functional-concurrent programs. For including such information, one should apply
+Such analysis tends to be rather difficult due to the dynamic nature of functional concurrent programs. For including such information, one should apply
  restrictions. For example in the following code, decision depends on the output of another function, therefore we need to analyse that function to find
  related conditions(not of importance in unit testing):
 
@@ -236,7 +210,7 @@ In the project, the result of monitoring the values of conditions and monitoring
  measure C/D coverage.This metric is extended to include patterns (ex: case clauses) and their hidden conditions for functional programs.
 
 \section{Modified Condition / Decision Coverage (MCDC)}
-This criterion is part of the standard ``DO-178B'', and states:
+This criterion is part of the standard "DO-178B", and states:
 
 “Every point of entry and exit in the program has been invoked at least once, every condition in a decision in the program has taken all possible outcomes
  at least once, every decision in the program has taken all possible outcomes at least once, and each condition in a decision has been shown to
@@ -253,7 +227,7 @@ There are three important points in implementation of MC/DC coverage:
  
 and also, this method should be extended to include patterns (ex: case clauses) and their hidden conditions for functional programs.
 
-There are different ways to handle shortcut logical operators in functional-concurrent programs:
+There are different ways to handle shortcut logical operators in functional concurrent programs:
 
 \begin{enumerate}
  \item Treating all the shortcut operators the same as their non-shortcut equivalents
@@ -261,11 +235,11 @@ There are different ways to handle shortcut logical operators in functional-conc
  \item Keeping conditions constant if they are not executed due to a shortcut operator\cite{chilenski1994applicability}
 \end{enumerate}
  
-Since in functional-concurrent programs decisions have no side effects and errors/exceptions are equivalent to Boolean value $false$, we can ignore the
+Since in functional concurrent programs decisions have no side effects and errors/exceptions are equivalent to Boolean value $false$, we can ignore the
  shortcut behaviour of the operators and compute coverage assuming they are normal Boolean operators. There is a fear that treating exceptions in
  sub-expressions of decision expressions as logical $false$, is not of programmers direct intention. It doesn’t change semantics of the program but
  the test case that is used to complete the coverage usually doesn’t reveal much information. For example in the following code, passing $0$ to the
- function doesn’t return error. Replacing ``$orelse$'' with ``$or$'' operator doesn’t change the semantics too:
+ function doesn’t return error. Replacing "$orelse$" with "$or$" operator doesn’t change the semantics too:
 
 \begin{lstlisting}
  isNonNegative(X) -> 
@@ -390,7 +364,7 @@ cannot be called, $100\%$ call coverage is achieved otherwise for each of these 
 
 \subsection{Loop coverage ( recursion coverage)}
 This coverage metric, checks whether each loop in the program has been executed zero, one or multiple times. In the presence of functional program we can
- replace this coverage with ``Recursion Coverage'', that checks whether recursion happened zero, one or multiple times. In this project the recursion
+ replace this coverage with "Recursion Coverage", that checks whether recursion happened zero, one or multiple times. In this project the recursion
  coverage can be achieved by searching the logged information to check if there are zero, one or multiple records of “function-entry” for the same function
  name. %todo: check consistency
 
@@ -398,21 +372,21 @@ This coverage metric, checks whether each loop in the program has been executed 
 This metric measures whether every expression with comparison operators is tested with its boundary values.
 This metric is not yet implemented in the tool.
 %todo: implement
-
+does not
 \subsection{Table Coverage}
 Indicates whether each entry in a particular array has been referenced.\cite{andersson2005automatic}
 This metric is not implemented in the tool.
 
 \subsection{Race Coverage}
 Monitors the code during the execution and reports which parts of the code have been executed with multiple threads(processes). This information helps in
- discovery of race conditions. This tool doesn't support this metric.
+ discovery of race conditions. This tool does not support this metric.
 
 \section{Object Code Related Coverages}
 There are various metrics to check quality of test cases in the object code level, in the compiler or directly after compilation of the code. Since the tool
  works with high-level code, these metrics are implemented.
 
 \section{Fault Based Coverages}
-There are several metrics checking quality of the tests and their coverage by adding some forms of error inside the code. This tool doesn't support these
+There are several metrics checking quality of the tests and their coverage by adding some forms of error inside the code. This tool does not support these
  metrics.
 
 \chapter{Our Approach}
@@ -491,7 +465,7 @@ To be able to log required and useful information, we inject probes (loggers) in
 In the section about statement coverage we mentioned that our interpretation of “Node” in the complete flow graph, includes branchings caused by errors and exceptions. To log
  information
  related to exceptions we wrap each error / exception-producing language construct inside a block implemented by try-catch to log exception information. Here is list of
- possible expressions\cite{ErlangAbstractSyntax} and indication of whether they generate errors at runtime if the arguments don't return exception(error).
+ possible expressions\cite{ErlangAbstractSyntax} and indication of whether they generate errors at runtime if the arguments do not return exception(error).
 %  
 \begin{flushleft}
 \tablehead{}
@@ -622,8 +596,8 @@ The code wrapping above mentioned constructs is the same. An example of transfor
 \end{lstlisting}
 
 The catch part, has three cases , one for each possible category of exceptions. It first executes the expression and returns the value. If exceptions generated, it catches them,
-logs them and re-throw them again. As mentioned before there is a central logger-server named ``rareLoggerName'' that logs messages sent from different parts of the
- instrumented code. Here recorded message is ``exception''. 
+logs them and re-throw them again. As mentioned before there is a central logger-server named "rareLoggerName" that logs messages sent from different parts of the
+ instrumented code. Here recorded message is "exception". 
 
 \subsection{Function/Abstraction Transformation}
 Functions are first transformed to set of case clauses representing their pattern matching behaviors and then the case-clause transformation is applied on the result
@@ -648,7 +622,7 @@ f(XUnique1) ->
 \end{lstlisting}
 
 and then in the second stage, the case expression is transformed. In the first stage, the arguments of the function are all gathered in a tuple. Pattern matching happens over
- this tuple and a special clause is added to generate ``function match\_failure'' error instead of ``case match\_failure''.
+ this tuple and a special clause is added to generate "function match\_failure" error instead of "case match\_failure".
 
 \subsection{If Transformation}
 The loggers are placed on top of the “if” structure to observe the value of conditions in decisions. For example:
