@@ -54,15 +54,15 @@ Often, control flow graphs (CFG) only model the execution flow of programs witho
 
 In this project, we define a special version of node coverage targeting functional languages. Since almost everything in a functional language is an expression, comprehensive definition of "node in the flow graph" would be "expression in a program". It is important to define how big the size of the expression representing a node should be and it is decided by the type and number of the subexpressions, along with the desired coverage precision. Anyway, in our implementation the size of the expression is not of importance because we use a special optimization later on.   
 
-The CFG starts with the \emph{start node} and ends with the \emph{final node}. They both have no semantical operation.
+The CFG starts with the \emph{source node} and ends with the \emph{sink node}. They both have no semantical operation.
 
-For representing the complete CFG in a functional language, the CFG should include exception flows. For this purpose, we add one extra virtual node, a fork, exactly before each node and it has an edge to the exception node. This virtual node represents the branching when an exception is generated. The exception node is a normal node representing the execution flow of the program when the exception is generated. It has an edge to the \emph{final node} or to the initial node of an exception handling structure. 
+For representing the complete CFG in a functional program, the CFG should include exception flows. For this purpose, we add one extra virtual node, a fork, exactly before each node and it has an edge to the exception node. This virtual node represents the branching when an exception is generated. The exception node is a normal node representing the execution flow of the program when the exception is generated. It has an edge to the \emph{sink node} or to the initial node of an exception handling structure. 
 
 For example, the expression $1/X$ is represented as three nodes in the CFG:
 \begin{enumerate}
  \item Virtual node: a fork with the condition $X$\neq$0$. It has an edge labeled $true$ to the normal node and an edge labeled $false$ to the exception node.
  \item Normal node: is a node that represents the expression when there is no exception. It has an edge to the node that represents the next expression in the execution flow
- \item Exception node: is a node in the exception flow that represents the generation of the exception; for example, $throw "Division by zero"$. It has an edge to either \emph{final node} or to the initial node of the exception handling structure
+ \item Exception node: is a node in the exception flow that represents the generation of the exception; for example, $throw "Division by zero"$. It has an edge to either \emph{sink node} or to the initial node of the exception handling structure
 \end{enumerate}
 
 Here we can define two types of node coverage based on the complete graph, the first one considers the exception node as a normal node that should be covered in testing and the weaker form that does not include exception nodes in the coverage measurements. The virtual nodes are ignored in both types. Our implementation is of the first type, covering all the nodes including the exception nodes.
@@ -74,8 +74,8 @@ We also implemented some form of optimization. We cut the CFG on the specific cu
 In a complete CFG, we define cut-points by:  
 
 \begin{enumerate}
- \item Immediately after the \emph{start node} is a cut-point
- \item Immediately before the \emph{final node} is a cut-point
+ \item Immediately after the \emph{source node} is a cut-point
+ \item Immediately before the \emph{sink node} is a cut-point
  \item Immediately after the first node in the beginning of each branch, including the exceptional branches\footnote{Each exceptional branch has only one node which is the exception node.} 
 \end{enumerate}
 
@@ -85,12 +85,12 @@ In summary, in our implementation we monitor the execution of:
 
 \begin{enumerate}
  \item the exception nodes
- \item the fist node after the \emph{start node}
+ \item the fist node after the \emph{source node}
  \item the nodes at the beginning of each branch
 \end{enumerate}
 
 \section{Decision Coverage}
-Along with \emph{all-edges coverage}, \emph{C2} and \emph{decision-decision-path testing}; \emph{decision coverage} and \emph{branch coverage} are closely related.
+Along with \emph{all-edges coverage}, \emph{C2} and \emph{decision-decision-path testing}; \emph{decision coverage} and \emph{branch coverage} are closely related code coverage metrics.
 
 Branch coverage criterion is defined as:
 
@@ -110,53 +110,17 @@ Where Condition is:
 
 It is important to notice that in the definition of decision coverage all the boolean expressions are included where in branch coverage with just considered ones immediately before each fork.
 
-In the beginning, branch coverage may look the same as node coverage for a functional program since its CFG is acyclic but that is not enough. The exception handling is one of the control flow structures that violates the rule of “if you visit all the nodes, you have visited all the edges.”. 
+The complete CFG of a functional program has a special property such that if you visit all the nodes you have visited all the edges. That means for such CFG, node coverage and branch coverage are equivalent.
 
-For example consider the following code:
- 
-\begin{lstlisting}
- f(X) ->try
-	    if  (X < 2) -> (1/X);
-		(X >= 2) -> (1/(X-2)) 
-	    end
-	catch  
-	    _:_ -> 0
-	end,
-	finished. 
-\end{lstlisting}
+In FCover, we add a monitor on top of each control flow statement. Monitors, or loggers, record and log the value of the boolean expression at runtime. So later on, after preprocessing, we can check the logged data weather all of these boolean expressions were evaluated to both $True$ and $False$. But there are difficulties in implementing decision coverage for dynamic type languages, since "Boolean expression" is not defined. For Erlang, in our view, it is satisfactory to cover only expressions inside the control flow statements.
 
-The test suite of $[1,3,2]$ achieves $100\%$ node coverage (weaker form, excluding exception nodes) since it covers all the nodes in its execution
- paths but not the edge from node of exception in the first clause to the catch clause as it is in $f(0)$. Recursion, function calls and message passing
- are also another form of control flow in functional concurrent programs that are treated as abstract values (as mentioned in the previous section) in
- unit testing.
-
-By our implementation of node coverage in complete CFG, we can consider coverage of all the edges from
- each former cutting-point to latter ones (if it is possible). In the other word, if we cover all the leaf nodes in the exection trees described in the
- previous section we achieve $100\%$ branch coverage and if we miss one of these leaf nodes we miss the edges in the path from the closest fork in the
- tree to the missed node.
-
-For implementing decision coverage we add monitors before every boolean expressions. Monitors (or loggers), record and report value of the boolean
- expression in total (not the sub-expressions) at runtime during execution of test cases. So later on we can check (from the logs) if all of these
- boolean expressions evaluated to both $True$ and $False$.
-
-%Todo: complete
-There are some difficulties in implementing decision coverage criterion (or metrics based on it) for dynamic-typed functional languages like Erlang since
- they do not have clear answer to question: "What is boolean expression?". In our view, the main spirit is to test the important factors determining the
- program logic for different cases. Here several approxiamtions can be applied. 
-
-In our implemenation $Todo: not complete$.  
  
 \section{Condition Coverage}
-Also closely referred to as “Predicate Coverage” is defined as:
+Condition coverage, also closely referred to as \emph{predicate coverage}, is defined as following:
 
-“Condition coverage requires that each condition in a decision take on all possible outcomes at least once (...), but does not require that the decision
- take on all possible outcomes at least once. In this case, for the decision ($A$ or $B$) test cases ($TF$) and ($FT$) meet the coverage criterion, but do
- not cause the decision to take on all possible outcomes. As with decision coverage, a minimum of two tests cases is required for each decision.”
-\cite{KellyJ.:2001:PTM:886632}
+“Condition coverage requires that each condition in a decision take on all possible outcomes at least once (...), but does not require that the decision take on all possible outcomes at least once. In this case, for the decision ($A$ or $B$) test cases ($TF$) and ($FT$) meet the coverage criterion, but do not cause the decision to take on all possible outcomes. As with decision coverage, a minimum of two tests cases is required for each decision.”\cite{KellyJ.:2001:PTM:886632}
 
-This metric is called “Predicate Coverage” due to using predicate as a key concept in its criterion.
-
-Each condition is an expression in the program including variables (constants) and these variables themselves can possibly hold results of evaluation of
+Each condition is an expression in the program including the variables and these variables themselves can possibly hold results of evaluation of
  several other Boolean expressions that are neglected, because they are not in-lined in the control flow structure. For example in the following code, there
  should be a form of program analysis to find the actual conditions of decision D (namely $X>0$ , $X<10$ and $X==10$):
 

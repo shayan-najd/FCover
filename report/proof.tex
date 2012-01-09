@@ -1,0 +1,39 @@
+\subsection{Proof}
+A complete CFG of a functional language, $CCFG = (N,E)$ with $N$ being set of nodes and $E$ set of ordered pairs of nodes representing edges, has the following properties:
+
+\begin{enumerate}
+ \item Acyclic, since there is no loop structure
+ \item Directed
+ \item Connected,
+ \item Binary,$\forall n \in N, 0\leq deg^+(n)\leq2 $ . Since decisions are boolean, there are maximum two outgoing edges possible for each node.
+ \item Rooted,$|\{n\in N |deg^-(n)=0\} | = 1$ . There is one single root for the graph; the \emph{source node}. The \emph{source node} has only one outgoing edge.
+ \item $|\{n\in N |deg^+(n)=0\} | = 1$; there is one \emph{sink node}.
+ \item Each edge leaving a node $n \in N$ such $deg^+(n)=2$, is connected to a node that has exactly one incoming edge. In other words, each branch starts with a non-joint node; a node with one single incoming edge.
+
+\end{enumerate}
+
+To prove "if every node $n \in N$ is visited then all the edges $e \in E$ are visited", we first prove that every outgoing edge is visited. Then, by cases, we prove that all the ingoing edges are visited.
+
+For every node $n \in N$ that is not the \emph{source node} or the \emph{sink node}, with one outgoing edge $e$:
+\begin{enumerate}
+ \item If every node is visited then $n$ is visited 
+ \item Since the CFG is connected and $n$ is not the \emph{sink node}, If the execution flow reaches $n$ then it should exit from the only edge $e$
+ \item If $n$ is visited then $e$ is visited
+\end{enumerate}
+
+For every node $n,n1,n2 \in N$ that is not the \emph{source node} or the \emph{sink node}, that $n$ has two outgoing edges $e1=(n,n1)$ and $e2=(n,n2)$:
+\begin{enumerate}
+ \item If every node is visited then $n$,$n1$ and $n2$ are all visited 
+ \item According to the property $(7)$, since $deg^+(n)=2$, We have $deg^-(n1)=1$ and $deg^-(n2)=1$. Hence, $e1$ is the only way to reach $n1$ and $e2$ is the only way to each $n2$
+ \item If $n1$ is visited then $e1$ is visited.
+ \item If $n2$ is visited then $e2$ is visited.
+ \item If $n$, $n1$ and $n2$ are all visited then $e1$ and $e2$ are visited
+\end{enumerate}
+
+Since the \emph{source node} has only one outgoing edge, if it is visited then its outgoing edges is visited too. The \emph{sink node} has no outgoing edge.
+
+Thus, if every node is visited then all the respective outgoing edges are visited. Since set of all the outgoing edges is equal to $E$, hence if every node $n \in N$ is visited then all the edges $e \in E$ are visited.
+
+
+
+ 
