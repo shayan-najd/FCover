@@ -5,18 +5,19 @@
 \usepackage{hhline}
 \usepackage{array}
 \usepackage{color}
-\usepackage[dvips, bookmarks, colorlinks=false, pdfborder={0 0 0}, pdftitle={Code Coverage in Functional Concurrent Programming},
+\usepackage[dvips, bookmarks, colorlinks=false, pdfborder={0 0 0}, pdftitle={Code Coverage in Functional Concurrent Languages},
  pdfauthor={Shayan Najd Javadipour}, pdfsubject={Project Report}, pdfkeywords={}]{hyperref}
 \setcounter{secnumdepth}{0}
 \makeatletter
 \newcommand\arraybslash{\let\\\@arraycr}
 \makeatother
 \lstset{language=erlang}
-\title{Code Coverage in Functional Concurrent Programming}
+\title{Code Coverage in Functional Concurrent Languages}
 \author{Shayan Najd Javadipour}
 \date{Fall 2011}
 \begin{document}
 \maketitle
+\addcontentsline{toc}{chapter}{Abstract}
 \begin{abstract}
 Code coverage is a measure indicating how much of the actual code is exercised in the process of testing. However, code coverage metrics are mostly defined with the focus on the imperative languages. When the target is a functional language, to be more effective, these metrics should be redefined.
 
@@ -26,6 +27,7 @@ In this project, we studied existing code coverage metrics and then we defined a
 
 In this report, first we describe the existing concepts related to code coverage and in the end of each section, we discuss our interpretation and implementation. Later in the second chapter, we discuss our approach for measuring code coverage in an Erlang code including the necessary code transformations for the instrumentation. We also describe the application of this coverage information in automated property based test case generation.
 \end{abstract}
+\addcontentsline{toc}{chapter}{Table of Contents}
 \tableofcontents
 \chapter{Code Coverage in Theory}
 \newpage
@@ -37,9 +39,9 @@ In this project, we studied existing code coverage metrics and then we defined a
 \section{Statement Coverage}
 Statement coverage---also closely named \emph{node coverage}, \emph{line coverage}, \emph{segment coverage} \cite{Ntafos:1988:CST:630792.631017}, \emph{basic block coverage} and \emph{C1} \cite{beizer2002software}---is defined as: 
 
-"A set $P$ of execution paths, satisfies the statement coverage criterion if and only if for all nodes $n$ in the flow graph, there is at least one path $p$ in $P$ such that node $n$ is on the path $p$."\cite{Zhu:1997:SUT:267580.267590}
+``A set $P$ of execution paths, satisfies the statement coverage criterion if and only if for all nodes $n$ in the flow graph, there is at least one path $p$ in $P$ such that node $n$ is on the path $p$.''\cite{Zhu:1997:SUT:267580.267590}
 
-There are several different interpretations for "node in the flow graph" in the above mentioned definition such as:
+There are several different interpretations for ``node in the flow graph'' in the above mentioned definition such as:
 
 \begin{enumerate}
  \item Statements (statement coverage)
@@ -49,9 +51,9 @@ There are several different interpretations for "node in the flow graph" in the 
  \item etc
 \end{enumerate}
 
-Often, control flow graphs (CFG) only model the execution flow of programs without considering the exception flows. Exception flow is an execution flow initiated by exceptions, errors or exit signals. For example, the term $throw "error"$  branches the main execution flow by generating an exception. A complete CFG includes both the normal execution flows and the exception flows. Based on this definition of the CFG, we can redefine node coverage which is arguably more precise.
+Often, control flow graphs (CFG) only model the execution flow of programs without considering the exception flows. Exception flow is an execution flow initiated by exceptions, errors or exit signals. For example, the term $throw$ $"error"$  branches the main execution flow by generating an exception. A complete CFG includes both the normal execution flows and the exception flows. Based on this definition of the CFG, we can redefine node coverage which is arguably more precise.
 
-In this project, we define a special version of node coverage targeting functional languages. Since almost everything in a functional language is an expression, comprehensive definition of "node in the flow graph" would be "expression in a program". It is important to define how big the size of the expression representing a node should be and it is decided by the type and number of the subexpressions, along with the desired coverage precision. Anyway, in our implementation the size of the expression is not of importance because we use a special optimization later on.   
+In this project, we define a special version of node coverage targeting functional languages. Since almost everything in a functional language is an expression, comprehensive definition of ``node in the flow graph'' would be ``expression in a program''. It is important to define how big the size of the expression representing a node should be and it is decided by the type and number of the subexpressions, along with the desired coverage precision. Anyway, in our implementation the size of the expression is not of importance because we use a special optimization later on.   
 
 The CFG starts with the \emph{source node} and ends with the \emph{sink node}. They both have no semantical operation.
 
@@ -59,9 +61,9 @@ For representing the complete CFG in a functional program, the CFG should includ
 
 For example, the expression $1/X$ is represented as three nodes in the CFG:
 \begin{enumerate}
- \item Virtual node: a fork with the condition $X$\neq$0$. It has an edge labeled $true$ to the normal node and an edge labeled $false$ to the exception node.
+ \item Virtual node: a fork with the condition $X\neq0$. It has an edge labeled $true$ to the normal node and an edge labeled $false$ to the exception node.
  \item Normal node: is a node that represents the expression when there is no exception. It has an edge to the node that represents the next expression in the execution flow
- \item Exception node: is a node in the exception flow that represents the generation of the exception; for example, $throw "Division by zero"$. It has an edge to either \emph{sink node} or to the initial node of the exception handling structure
+ \item Exception node: is a node in the exception flow that represents the generation of the exception; for example, $throw$ $"Division by zero"$. It has an edge to either \emph{sink node} or to the initial node of the exception handling structure
 \end{enumerate}
 
 Here we can define two types of node coverage based on the complete graph, the first one considers the exception node as a normal node that should be covered in testing and the weaker form that does not include exception nodes in the coverage measurements. The virtual nodes are ignored in both types. Our implementation is of the first type, covering all the nodes including the exception nodes.
@@ -93,19 +95,19 @@ Along with \emph{all-edges coverage}, \emph{C2} and \emph{decision-decision-path
 
 Branch coverage is defined as:
 
-"A set $P$ of execution paths satisfies the branch coverage criterion if and only if for all edges $e$ in the flow graph,there is at least one path $p$ in $P$ such that $p$ contains the edge $e$."\cite{Zhu:1997:SUT:267580.267590}
+``A set $P$ of execution paths satisfies the branch coverage criterion if and only if for all edges $e$ in the flow graph,there is at least one path $p$ in $P$ such that $p$ contains the edge $e$.''\cite{Zhu:1997:SUT:267580.267590}
 
 Decision coverage is defined as:
 
-“Decision Coverage - Every point of entry and exit in the program has been invoked at least once and every decision in the program has taken on all possible outcomes at least once.“\cite{cast-10}
+``Decision Coverage - Every point of entry and exit in the program has been invoked at least once and every decision in the program has taken on all possible outcomes at least once.''\cite{cast-10}
 
 And \emph{decision} is defined as:
 
-"A Boolean expression composed of conditions and zero or more Boolean operators. A decision without a Boolean operator is a condition. If a condition appears more than once in a decision, each occurrence is a distinct condition."\cite{cast-10}
+``A Boolean expression composed of conditions and zero or more Boolean operators. A decision without a Boolean operator is a condition. If a condition appears more than once in a decision, each occurrence is a distinct condition.''\cite{cast-10}
 
 Where \emph{condition} is:
 
-“A Boolean expression containing no Boolean operators.”\cite{cast-10}
+``A Boolean expression containing no Boolean operators.''\cite{cast-10}
 
 In functional languages, beside Boolean expressions\footnote{They are often called guards.}, pattern matchings are used to form conditional clauses. To have a more comprehensive coverage metric, patterns should be considered a form of Boolean expressions. In Fcover, we transform a pattern $p$ of variable $X$ to a Boolean expression $match(p,X)$. Since patterns are not often first-class entities in functional languages, $match$ is a meta-level function.
 
@@ -115,13 +117,13 @@ The complete CFG of a functional program has a special property: if you visit al
 
 FCover provides the specified node coverage; consequently, it also provides branch coverage.
 
-In FCover, we add a monitor on top of the Boolean expressions in each conditional clause. Monitors, or loggers, observe and log the value of the Boolean expression at the runtime. So later on, after preprocessing, we can check the logged data whether all of these Boolean expressions were evaluated to both $True$ and $False$. However, there are difficulties in implementing decision coverage for dynamic type languages since "Boolean expression" is not defined. For Erlang, in our view, it is satisfactory to cover only the Boolean expressions inside the control flow statements.
+In FCover, we add a monitor on top of the Boolean expressions in each conditional clause. Monitors, or loggers, observe and log the value of the Boolean expression at the runtime. So later on, after preprocessing, we can check the logged data whether all of these Boolean expressions were evaluated to both $True$ and $False$. However, there are difficulties in implementing decision coverage for dynamic type languages since ``Boolean expression'' is not defined. For Erlang, in our view, it is satisfactory to cover only the Boolean expressions inside the control flow statements.
 
  
 \section{Condition Coverage}
 Condition coverage, also closely referred to as \emph{predicate coverage}, is defined as follows:
 
-“Condition coverage requires that each condition in a decision take on all possible outcomes at least once (...), but does not require that the decision take on all possible outcomes at least once. In this case, for the decision ($A$ or $B$) test cases ($TF$) and ($FT$) meet the coverage criterion, but do not cause the decision to take on all possible outcomes. As with decision coverage, a minimum of two tests cases is required for each decision.”\cite{KellyJ.:2001:PTM:886632}
+``Condition coverage requires that each condition in a decision take on all possible outcomes at least once (...), but does not require that the decision take on all possible outcomes at least once. In this case, for the decision ($A$ or $B$) test cases ($TF$) and ($FT$) meet the coverage criterion, but do not cause the decision to take on all possible outcomes. As with decision coverage, a minimum of two tests cases is required for each decision.''\cite{KellyJ.:2001:PTM:886632}
 
 As mentioned in the previous section, patterns should be considered a form of Boolean expression. Each sub-pattern of a pattern forms a separate condition, in a similar way that subexpressions of a Boolean expression do. 
 
@@ -130,9 +132,9 @@ In this work, we decompose a decision into conditions and observe their values a
 \section{Multiple Condition Coverage}
 Multiple condition coverage is defined as follows:
 
-“A test set $T$ is said to be adequate according to the multiple-condition-coverage criterion if, for every condition $C$, which consists of atomic predicates $(p1, p2,  . . .  , pn)$, and all the possible combinations $(b1, b2,  . . .  , bn)$ of their truth values, there is at least one test case in $T$ such that the value of $pi$ equals $bi$, $i = 1, 2,  .  .  .  , n$.“ \cite{Zhu:1997:SUT:267580.267590}
+``A test set $T$ is said to be adequate according to the multiple-condition-coverage criterion if, for every condition $C$, which consists of atomic predicates $(p1, p2,  . . .  , pn)$, and all the possible combinations $(b1, b2,  . . .  , bn)$ of their truth values, there is at least one test case in $T$ such that the value of $pi$ equals $bi$, $i = 1, 2,  .  .  .  , n$.'' \cite{Zhu:1997:SUT:267580.267590}
 
-In our terminology, a "condition" is a decision and "predicate" is a condition. 
+In our terminology, a ``condition'' is a decision and ``predicate'' is a condition. 
 
 \emph{multiple condition coverage} grows exponentially in respect to the number of conditions in a decision, but it is easy to calculate. In practice, the number of conditions in a decision is often low enough that it does not affect the performance.
 
@@ -141,14 +143,14 @@ In this project, we calculate this metric by post-processing the logged data. It
 \section{Condition / Decision Coverage}
 C/D Coverage is a mixture of condition coverage and decision coverage and is defined as:
 
-“Condition/decision coverage combines the requirements for decision coverage with those for condition coverage. That is, there must be sufficient test cases to toggle the decision outcome between true and false and to toggle each condition value between true and false. Hence, a minimum of two test cases are necessary for each decision. Using the example $(A or B)$, test cases $(TT)$ and $(FF)$ would meet the coverage requirement. However, these two tests do not distinguish the correct expression $(A or B)$ from the expression $A$ or from the expression $B$ or from the expression $(A and B)$.“\cite{KellyJ.:2001:PTM:886632} 
+``Condition/decision coverage combines the requirements for decision coverage with those for condition coverage. That is, there must be sufficient test cases to toggle the decision outcome between true and false and to toggle each condition value between true and false. Hence, a minimum of two test cases are necessary for each decision. Using the example $(A or B)$, test cases $(TT)$ and $(FF)$ would meet the coverage requirement. However, these two tests do not distinguish the correct expression $(A or B)$ from the expression $A$ or from the expression $B$ or from the expression $(A and B)$.''\cite{KellyJ.:2001:PTM:886632} 
 
 In FCover, C/D coverage is done by post-processing the logged data in the same way as decision coverage and condition coverage. This coverage metric is also extended to include patterns.
 
 \section{Modified Condition / Decision Coverage (MCDC)}
-This criterion is part of the standard "DO-178B", and states:
+This criterion is part of the standard ``DO-178B'', and states:
 
-“Every point of entry and exit in the program has been invoked at least once, every condition in a decision in the program has taken all possible outcomes at least once, every decision in the program has taken all possible outcomes at least once, and each condition in a decision has been shown to independently affect that decision's outcome. A condition is shown to independently affect a decision's outcome by varying just that condition while holding fixed all other possible conditions.”\cite{cast-10}
+``Every point of entry and exit in the program has been invoked at least once, every condition in a decision in the program has taken all possible outcomes at least once, every decision in the program has taken all possible outcomes at least once, and each condition in a decision has been shown to independently affect that decision's outcome. A condition is shown to independently affect a decision's outcome by varying just that condition while holding fixed all other possible conditions.''\cite{cast-10}
 
 There are three important points in the implementation of MC/DC coverage:
 
@@ -170,7 +172,7 @@ There are different ways to handle shortcut logical operators in functional prog
  
 Since decisions have no side effects in functional programs and errors/exceptions are equivalent to the Boolean value $false$, we can ignore the shortcut behavior of the operators and compute coverage assuming they are normal Boolean operators.  
  
-For measuring the MCDC coverage, in this project, an exhaustive algorithm is implemented to calculate whether a test suite passes the coverage. The input of the algorithm is the logged data. In this project we treat shortcut operators as normal operators and in case of chronological dependency, we interpret “logically undefined” as logical $false$. A condition named \emph{child} is chronologically dependent on the condition named \emph{parent} where \emph{child} is meaningless if \emph{parent} does not hold. For example, "$element(1,X)$” in the following code requires “$is_tuple(X)$” to hold:
+For measuring the MCDC coverage, in this project, an exhaustive algorithm is implemented to calculate whether a test suite passes the coverage. The input of the algorithm is the logged data. In this project we treat shortcut operators as normal operators and in case of chronological dependency, we interpret ``logically undefined'' as logical $false$. A condition named \emph{child} is chronologically dependent on the condition named \emph{parent} where \emph{child} is meaningless if \emph{parent} does not hold. For example, ``$element(1,X)$'' in the following code requires ``$is_tuple(X)$'' to hold:
 
 \begin{lstlisting}
 foo(X)->
@@ -179,17 +181,17 @@ foo(X)->
 end.
 \end{lstlisting} 
 
-In case of multiple and nested control flow statements, the problem is how to include contexts in calculations. By contexts, we can determine whether a condition is repeated and in that case, what is its value. Having this information, we can compute coverage treating the repeated condition as a Boolean constant with the value extracted from the context (environment). A simpler solution is to consider each nested decision as a separate decision with extra conditions indicating their contextual preconditions. For example, in "if" with multiple guards, the second guard is evaluated only if the first guard does not hold. In that case, we add negation of the first guard condition with shortcut operator “andAlso” to the decision of the second guard.
+In case of multiple and nested control flow statements, the problem is how to include contexts in calculations. By contexts, we can determine whether a condition is repeated and in that case, what is its value. Having this information, we can compute coverage treating the repeated condition as a Boolean constant with the value extracted from the context (environment). A simpler solution is to consider each nested decision as a separate decision with extra conditions indicating their contextual preconditions. For example, in ``if'' with multiple guards, the second guard is evaluated only if the first guard does not hold. In that case, we add negation of the first guard condition with shortcut operator ``andAlso'' to the decision of the second guard.
 
 It is possible that conditions are not completely independent from each other and there are also chances of repeated conditions. Two solutions to this problem are defined as follows:
 
-“Unique Cause MCDC: A Form of MCDC which allows for masking to be used only in the case of coupled conditions to show a condition’s independence. Otherwise, only the condition of interest is allowed to change between the two truth vectors of the independence pair. The condition’s change is (generally) the unique cause of the change in the expression’s outcome, hence the name.“\cite{chilenski2001investigation}
+``Unique Cause MCDC: A Form of MCDC which allows for masking to be used only in the case of coupled conditions to show a condition’s independence. Otherwise, only the condition of interest is allowed to change between the two truth vectors of the independence pair. The condition’s change is (generally) the unique cause of the change in the expression’s outcome, hence the name.''\cite{chilenski2001investigation}
 
-“Masking MCDC: A form of MCDC that allows all possible forms of masking to be used to show a condition’s independence.”\cite{chilenski2001investigation}
+``Masking MCDC: A form of MCDC that allows all possible forms of masking to be used to show a condition’s independence.''\cite{chilenski2001investigation}
 
-Where "masking" is defined as:
+Where ``masking'' is defined as:
 
-“The process of setting the RHS (LHS) operand of an operator to a value such that changing the LHS (RHS) operand of that operator does not change the value of the operator. For an AND operator, masking of the RHS (LHS) can be achieved by holding the LHS (RHS) False.  Recall from Boolean algebra that $X AND False = False AND X = False$ no matter what the value of X is. For an OR operator, masking of the RHS (LHS) can be achieved by holding the LHS (RHS) True. Recall from Boolean algebra that $X OR True = True OR X = True$ no matter what the value of $X$ is.“ \cite{chilenski2001investigation}
+``The process of setting the RHS (LHS) operand of an operator to a value such that changing the LHS (RHS) operand of that operator does not change the value of the operator. For an AND operator, masking of the RHS (LHS) can be achieved by holding the LHS (RHS) False.  Recall from Boolean algebra that $X AND False = False AND X = False$ no matter what the value of X is. For an OR operator, masking of the RHS (LHS) can be achieved by holding the LHS (RHS) True. Recall from Boolean algebra that $X OR True = True OR X = True$ no matter what the value of $X$ is.'' \cite{chilenski2001investigation}
 
 In this project, after observing the values of the conditions in each decision at the execution time, we compute MCDC coverage by post-processing the logged data. With our algorithm we can find conditions that do not even have one pair of test cases to determine their independence. Hence, we can identify tautologies; contradictions,decision independent from conditions; and dummy conditions, conditions that their value does not change decisions. There are several optimized algorithms in the literature that can generate test cases for the complete MCDC coverage.
 
@@ -198,7 +200,7 @@ Path coverage is a complex, yet powerful, form of code coverage. Because of the 
 
 Path Coverage is defined as following:
 
-“A set $P$ of execution paths satisfies the path coverage criterion if and only if $P$ contains all execution paths from the begin node to the end node in the flow graph.“\cite{Zhu:1997:SUT:267580.267590}
+``A set $P$ of execution paths satisfies the path coverage criterion if and only if $P$ contains all execution paths from the begin node to the end node in the flow graph.''\cite{Zhu:1997:SUT:267580.267590}
 
 Path coverage is not implemented in this project due to its complexity and inefficiency. 
 
@@ -211,27 +213,27 @@ This criterion determines if all jump to jump paths (LCSAJs) have been executed.
 
 LCSAJ can be defined as:
 
-“An LCSAJ consists of a body of code through which the flow of control may proceed sequentially and which is terminated by a jump in the control flow. The hierarchy $TERi$ , $i = 1, 2, . . . ,n, . . .$ of criteria starts with statement coverage as the lowest level, followed by branch coverage as the next lowest level.”\cite{Zhu:1997:SUT:267580.267590}
+``An LCSAJ consists of a body of code through which the flow of control may proceed sequentially and which is terminated by a jump in the control flow. The hierarchy $TERi$ , $i = 1, 2, . . . ,n, . . .$ of criteria starts with statement coverage as the lowest level, followed by branch coverage as the next lowest level.''\cite{Zhu:1997:SUT:267580.267590}
 
 \subsection{Data Flow Coverage}
 It is a form of path coverage that only includes the sub-paths from variable bindings to the subsequent references of the variables.
  
 \subsection{Predicate Coverage}
 It is defined as:
-“We say that predicate coverage has been achieved if all possible combinations of truth values corresponding to the selected path have been explored under some test. Predicate coverage is clearly stronger than branch coverage. If all possible combinations of all predicates under all interpretations are covered, we have the equivalent of total path testing. Just as there are hierarchies of path testing based on path segment link lengths, we can construct hierarchies based on different notions of predicate coverage.“\cite{beizer2002software}
+``We say that predicate coverage has been achieved if all possible combinations of truth values corresponding to the selected path have been explored under some test. Predicate coverage is clearly stronger than branch coverage. If all possible combinations of all predicates under all interpretations are covered, we have the equivalent of total path testing. Just as there are hierarchies of path testing based on path segment link lengths, we can construct hierarchies based on different notions of predicate coverage.''\cite{beizer2002software}
 
 \subsection{All-Definition Coverage}
 The definition is as follows:
-“A set P of execution paths satisfies the all-definitions criterion if and only if for all definition occurrences of a variable x such that there is a use of x which is feasibly reachable from the definition, there is at least one path p in P such that p includes a subpath through which the definition of x reaches some use occurrence of x.”\cite{Zhu:1997:SUT:267580.267590}
+``A set P of execution paths satisfies the all-definitions criterion if and only if for all definition occurrences of a variable x such that there is a use of x which is feasibly reachable from the definition, there is at least one path p in P such that p includes a subpath through which the definition of x reaches some use occurrence of x.''\cite{Zhu:1997:SUT:267580.267590}
 
 \subsection{All-Uses Coverage}
 \emph{All-Uses Coverage} is described as:
-“A set P of execution paths satisfies the all-uses criterion if and only if for all definition occurrences of a variable x and all use occurrences of x that the definition feasibly reaches, there is at least one path p in P such that p includes a subpath through which that definition reaches the use.”
+``A set P of execution paths satisfies the all-uses criterion if and only if for all definition occurrences of a variable x and all use occurrences of x that the definition feasibly reaches, there is at least one path p in P such that p includes a subpath through which that definition reaches the use.''
 \cite{Zhu:1997:SUT:267580.267590}
 
 \subsection{All Definition-Use-Paths (All DU-Paths)}
 The definition is as follows:
-“A set P of execution paths satisfies the all-du-paths criterion if and only if for all definitions of a variable x and all paths q through which that definition reaches a use of x, there is at least one path p in P such that q is a subpath of p, and q is cycle-free or contains only simple cycles.”
+``A set P of execution paths satisfies the all-du-paths criterion if and only if for all definitions of a variable x and all paths q through which that definition reaches a use of x, there is at least one path p in P such that q is a subpath of p, and q is cycle-free or contains only simple cycles.''
 \cite{Zhu:1997:SUT:267580.267590}
 
 \subsection{N-Length Sub-path Coverage}
@@ -239,8 +241,8 @@ The definition is as follows:
 
 \subsection{Required k-Tuples Criteria}
 It is defined as:
-“A set P of execution paths satisfies the required k-tuples criterion,, if and only if for all j–dr interactions L,, there is at least one path p in P such
- that p includes a subpath which is an interaction path for L.”\cite{Zhu:1997:SUT:267580.267590}
+``A set P of execution paths satisfies the required k-tuples criterion,, if and only if for all j–dr interactions L,, there is at least one path p in P such
+ that p includes a subpath which is an interaction path for L.''\cite{Zhu:1997:SUT:267580.267590}
 
 \section{Subtle Code Coverage Metrics}
 
@@ -256,8 +258,8 @@ We add two observation points (logging points) to each function, one in the begi
 With the assumption that most of the bugs lay in the interfaces between code blocks, this method determines whether all the function calls have been executed.
 In this project for each function call there is an exception node and normal node that should be covered. If there is no exception indicating that function cannot be called, $100\%$ call coverage is achieved, otherwise each of these exceptions reveal a function-call bug.
 
-\subsection{Loop coverage ( recursion coverage)}
-This coverage metric, determines whether each loop in the program has been executed zero, one or multiple times. In functional programs we can replace this coverage metric with "Recursion Coverage". Recursion coverage determines whether recursion happened zero, one or multiple times. In this project the recursion coverage can be achieved by searching the logged data to check if there are zero, one or multiple records of function-entry for the same function name.
+\subsection{Loop coverage (recursion coverage)}
+This coverage metric, determines whether each loop in the program has been executed zero, one or multiple times. In functional programs we can replace this coverage metric with ``Recursion Coverage''. Recursion coverage determines whether recursion happened zero, one or multiple times. In this project the recursion coverage can be achieved by searching the logged data to check if there are zero, one or multiple records of function-entry for the same function name.
 
 \subsection{Relational Operator Coverage}
 This metric measures whether every expression with comparison operators is tested with its boundary values.
@@ -268,7 +270,7 @@ Table coverage, indicates whether each entry in a particular array has been refe
 This metric is not implemented in the tool.
 
 \subsection{Race Coverage}
-Monitors the code in execution time and reports which parts of the code have been executed with multiple threads(processes). This information helps discovering race conditions. 
+Monitors the code in execution time and reports which parts of the code have been executed with multiple threads (processes). This information helps discovering race conditions. 
 This tool does not support this metric.
 
 \section{Object Code Related Coverages}
@@ -281,26 +283,6 @@ This tool does not support these metrics.
 
 \chapter{Our Approach}
 \newpage
-\section{Testing Approach: Stop Function}
-We write tests in terms of properties that are used by Quickcheck[ ref?] to automatically generate test cases. In automatic generation of test cases, we
- have to have a stop-function to determine when generated test cases are satisfactory and then stop the process of test case generation. Our tool reports
- different measurements about code coverage during the execution of each test case. 
-
-We connect our tool to Quickcheck as a stop-function of generating test cases automatically. To distinguish between test cases, we have to define features.
- Quickcheck can do feature-based testing for us. The unique feature is determined by the coverage information provided by the tool.
-
-Here is the process:
-\begin{enumerate}
- \item The tool parses the code and generates AST (Abstract Syntax Tree).
- \item The AST is traversed by the tool and transformed to a new instrumented AST.
- \item The tool compiles and loads the new AST.
- \item Quickcheck reads the properties and generates test cases.
- \item Quickcheck executes test cases on the newly loaded code.
- \item The tool calculates the coverage information based on logged data and passes it to Quickcheck.
- \item Quickcheck in feature-based approach, uses the information provided by the tool to determine identical and non-identical test-cases.
- \item Quickcheck stops generating the test cases whenever there are enough number of non-identical test cases in the test suite (or 
-whenever timeouts/max number exceeds).
-\end{enumerate}
 
 \section{Coverage Information}
 There are different ways of describing the coverage information. Since in the end we are going to pass the information to another system to act as a stop-function, we need to
@@ -335,7 +317,7 @@ Path would be a list of tuples (per program points). As for the example above it
 \end{lstlisting}
 
 The first part of the elements is the $PID$ of the process executing the test case. So for each test execution there is a separate process. The second part is the name of the
- function and the third is the relative program point in the function. The line number of the original code is on the fourth part ( not completely implemented because of
+ function and the third is the relative program point in the function. The line number of the original code is on the fourth part (not completely implemented because of
  non-bidirectional AST transformation). The fifth part contains some detailed information collected to help us calculating the coverage.   
 
 \subsection{Logging and Log Information}
@@ -346,17 +328,11 @@ Undefined!
 %todo: write about try catch nesting   try 1 > 2 catch ... = try 1 catch ... > try 2 catch ...
 
 \section{Code Transformation}
-To be able to log required and useful information, we inject probes (loggers) in different parts of the original code. It is achieved by transforming the code (via AST
- transformation) to a “semantically equivalent” instrumented code. The generated code is designed to be semantically equivalent to the original code with an exception that it
- includes logging code which is semantically orthogonal (different aspect) to the original semantic. To implement mentioned coverage metrics we transform different code
- constructs in the language. In the rest of this chapter we list and discuss these transformations.
+To be able to log required and useful information, we inject loggers in different parts of the original code. It is achieved by transforming the code , via AST transformation, into a semantically equivalent instrumented version. To implement the mentioned coverage metrics, we transform different code constructs in the language. In the following sections, we list and discuss these transformations.
 
 \subsection{Enclosing Errors}
-In the section about statement coverage we mentioned that our interpretation of “Node” in the complete flow graph, includes branchings caused by errors and exceptions. To log
- information
- related to exceptions we wrap each error / exception-producing language construct inside a block implemented by try-catch to log exception information. Here is list of
- possible expressions\cite{ErlangAbstractSyntax} and indication of whether they generate errors at runtime if the arguments do not return exception(error).
-%  
+In the section about statement coverage, we mentioned that our interpretation of node in the complete control flow graph, includes branched execution flows due to errors and exceptions. To log information related to exceptions we wrap each error, or exception, producing language construct inside a block implemented by try-catch to log the exception information. Here is list of possible expressions\cite{ErlangAbstractSyntax} and indication of whether they generate errors at runtime if the arguments do not return exceptions (errors):
+
 \begin{flushleft}
 \tablehead{}
 \begin{supertabular}{|m{13.188cm}|m{2.922cm}|}
@@ -464,7 +440,7 @@ query\ [E\_0\ {\textbar}{\textbar}\ W\_1,\ ...,\ W\_k]\ end,\ where\ each\ W\_i\
 \end{supertabular}
 \end{flushleft}
 
-The code wrapping above mentioned constructs is the same. An example of transformed code (actual code) for expression $1 * 9$  at line $3$ of function $f$ would be:
+To wrap all the above mentioned constructs, we use the same code block. An example of transformed code for expression $1 * 9$  at line $3$ of function $f$ would be:
  
 \begin{lstlisting}
     try 
@@ -485,20 +461,16 @@ The code wrapping above mentioned constructs is the same. An example of transfor
     end.
 \end{lstlisting}
 
-The catch part, has three cases , one for each possible category of exceptions. It first executes the expression and returns the value. If exceptions generated, it catches them,
-logs them and re-throw them again. As mentioned before there is a central logger-server named "rareLoggerName" that logs messages sent from different parts of the
- instrumented code. Here recorded message is "exception". 
+The catch part has three cases, one for each possible category of exceptions. It first executes the expression and if there is no exception, it returns the value. If exceptions are generated, it catches them, logs them and re-throws them again. As mentioned before there is a central logger server named ``rareLoggerName'' that logs messages sent from different parts of the instrumented code. Here the recorded message is ``exception''. 
 
 \subsection{Function/Abstraction Transformation}
-Functions are first transformed to set of case clauses representing their pattern matching behaviors and then the case-clause transformation is applied on the result
- of first transformation. Also in the first transformation we have to design a wild-card pattern to return match\_failure error specific to function (instead of case error).
- There are loggers at the beginning and end of the function body to log function entry and exit. For example function definition:
+Functions are first transformed to a set of case clauses representing their pattern matching behaviors and then the case clause transformation is applied on the result of the first transformation. Also in the first transformation, we have to design a wildcard pattern to return the ``match\_failure'' error specific to the function instead of the case specific one. There are loggers at the beginning and at the end of the function body to log function entry and function exit. For example, function definition:
 
 \begin{lstlisting}
    f([X])->X.
 \end{lstlisting}
 
-is first transformed to:
+is first transformed into:
 
 \begin{lstlisting}
 f(XUnique1) ->
@@ -511,11 +483,10 @@ f(XUnique1) ->
         end.
 \end{lstlisting}
 
-and then in the second stage, the case expression is transformed. In the first stage, the arguments of the function are all gathered in a tuple. Pattern matching happens over
- this tuple and a special clause is added to generate "function match\_failure" error instead of "case match\_failure".
+and then in the second stage, the case expression is transformed. In the first stage, the arguments of the function are all wrapped in a tuple, over which the pattern matching happens and a special clause is added to generate ``function match\_failure'' error instead of ``case match\_failure''.
 
 \subsection{If Transformation}
-The loggers are placed on top of the “if” structure to observe the value of conditions in decisions. For example:
+The loggers are placed on top of the ``if'' structure to observe the value of the conditions in decisions. For example:
 
 \begin{lstlisting}
 if 
@@ -524,7 +495,7 @@ if
 end 
 \end{lstlisting}
 
-is transformed to equivalent code of this pseudo-code:
+is transformed into an equivalent code of this pseudo-code:
 
 \begin{lstlisting}
 begin
@@ -541,8 +512,7 @@ begin
 end 
 \end{lstlisting}
 
-The first logged message includes textual representation of the decision and its actual value. Also there is another logger in the beginning of the clause, logging clause entry.
- It is possible to have exceptions in decision part of control flows and error case in Erlang is equal to $false$. Therefore the actual transformation of:
+The first logged message includes textual representation of the decision and its actual value. There is also another logger, in the beginning of the clause, logging clause entry. It is possible to have exceptions in the decision part of the control flow statements; an error case in Erlang is equal to $false$. Therefore, the actual transformation of:
 
 \begin{lstlisting}
 if 2 > 1 -> 1 end
@@ -569,10 +539,9 @@ end
 \end{lstlisting}
 
 \subsection{Case Transformation}
-For each case-clause there is a logger on top of the case block to log conditions in decisions of each clause.
-%todo: in implementation consider the order of the clauses, therefore add negative cond of previous case
+For each case clause there is a logger on top of the case block to log the conditions in the decisions of each clause.
+ 
 For example:
-
 \begin{lstlisting}
 case 1 of 
   1 -> v1
@@ -580,7 +549,7 @@ case 1 of
 end 
 \end{lstlisting}
 
-Is transformed into (and also enclosed in try/catch) equivalent code of this pseudo-code:
+is transformed into the equivalent code of this pseudo-code \footnote{and also enclosed in try/catch}:
 %todo: fix the code below
 \begin{lstlisting}
  begin
@@ -609,7 +578,8 @@ Is transformed into (and also enclosed in try/catch) equivalent code of this pse
 \end{lstlisting}  
 
 \subsection{Catch Transformation}
-Catch clauses are translated into nested catch expressions to be able to log proper information. For example:
+
+Catch clauses are translated into nested catch expressions, in order to log the proper information. For example:
 
 \begin{lstlisting}
 try 
@@ -620,7 +590,8 @@ catch
 end.
 \end{lstlisting}
 
-The catch part is transformed into equivalent code of this pseudo-code:
+The catch part is transformed into the equivalent code of this pseudo-code:
+
 \begin{lstlisting}
 try 
   1 
@@ -649,9 +620,8 @@ catch
 end.
 \end{lstlisting}
 
-
 \subsection{Try Transformation}
-There are several different forms of “try” expressions in Erlang, the transformation of “try” block which includes “of” selection, is a complex process. For example:
+There are several different forms of ``try'' expressions in Erlang. The transformation of ``try'' block, which includes ``of'' selection, is a complex process. For example:
 %todo: add other transformations
 \begin{lstlisting}
 try exp1 of 
@@ -662,7 +632,7 @@ catch
 end
 \end{lstlisting}
 
-is transformed into the equivalent code of this pseudo-code(with another stage to transform the cases in generated code):
+is transformed into the equivalent code of this pseudo-code\footnote{with another stage to transform the cases in generated code}:
 
 \begin{lstlisting}
 case  ( try
@@ -672,12 +642,29 @@ case  ( try
 	   value enclosed in tuple {error, ?}
         end) of
   {ok, V } -> case clauses representing try
-  “of selection” clauses
+  "of selection" clauses
   {error, E } -> E
 end
 \end{lstlisting}
+
+\section{Testing Approach: Stop Function}
+We write tests in terms of the properties that are used by Quickcheck\cite{claessen2000quickcheck} to automatically generate test cases. In automatic test generation, we need a stop function to determine when the generated test cases are satisfactory enough and to stop the process of the test case generation afterwards. A stop function needs to identify which test cases are identical and it is done by defining features. Two test cases are identical if they have the same features.Quickcheck can do feature based testing for us. For this purpose, we connect FCover to Quickcheck. Features are determined by the coverage information.
+
+Below follows the process:
+\begin{enumerate}
+ \item FCover parses the code and generates the Abstract Syntax Tree (AST).
+ \item The AST is traversed by the tool and transformed to a new instrumented AST.
+ \item The tool compiles and loads the new AST.
+ \item Quickcheck generates and executes a test case.
+ \item FCover calculates the raw coverage information and passes it to Quickcheck.
+ \item Quickcheck keeps repeating the last two steps by feature based approach until it stops and returns the test suite.  
+ \item To shrink the test suite, coverage information of the generated test suite is post-processed to identify and remove the identical test cases.
+\end{enumerate}
+\newpage
 \chapter{Future Work}
 \newpage
+%\clearpage
+\addcontentsline{toc}{chapter}{Bibliography}
 \bibliographystyle{plain}
 \bibliography{ref}
 \end{document}
