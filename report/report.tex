@@ -285,13 +285,7 @@ This tool does not support these metrics.
 \newpage
 
 \section{Coverage Information}
-There are different ways of describing the coverage information. Since in the end we are going to pass the information to another system to act as a stop-function, we need to
- define the information related to each test case minimum and in the same time identical. In our tool the coverage information is a list of program points and their
- corresponding information. We collect special information for different categories of program points to be able to determine the identical test cases.
-
-Program points are relative positions inside a function and are tracked globally using a separate state counter. During the AST transformation the code requests the new
- program point from the counter and assigns it to the logger to embed it inside the augmented code that later on would be part of dynamic profiling (logging coverage
- information).For example:
+In our tool the raw coverage information is a list of program points and their corresponding information. Since later on we use the tool as a stop function, we collect special information for the different categories of program points to be able to determine the identical test cases. Program points are relative positions inside a function tracked globally using a central state counter. During the AST transformation, the transformer requests the new program point from the counter and assigns it to the logger to embed it inside the augmented code. For example:
 
 \begin{lstlisting}
 fooFunc () -> 
@@ -306,7 +300,7 @@ Has multiple program points including:
  \item etc
 \end{enumerate}
  
-Path would be a list of tuples (per program points). As for the example above it would be something like:
+A path would be an ordered list of these logged tuples. For the above mentioned example, it would be something like:
 
 \begin{lstlisting}
 [ {ProcessID# , fooFunc, programPoint 1
@@ -316,17 +310,8 @@ Path would be a list of tuples (per program points). As for the example above it
     ,Line 2,{functionExit}}]
 \end{lstlisting}
 
-The first part of the elements is the $PID$ of the process executing the test case. So for each test execution there is a separate process. The second part is the name of the
- function and the third is the relative program point in the function. The line number of the original code is on the fourth part (not completely implemented because of
- non-bidirectional AST transformation). The fifth part contains some detailed information collected to help us calculating the coverage.   
-
-\subsection{Logging and Log Information}
-Undefined!
-%todo: complete
-%todo: write about different loggers and the info they store
-%todo: write about the pattern logging
-%todo: write about try catch nesting   try 1 > 2 catch ... = try 1 catch ... > try 2 catch ...
-
+The first part of each element is the $PID$ of the process executing the test case. The second part is the name of the function and the third is the relative program point in the function. The line number of the original code is on the fourth part. The fifth part contains some detailed information about each program point.   
+ 
 \section{Code Transformation}
 To be able to log required and useful information, we inject loggers in different parts of the original code. It is achieved by transforming the code , via AST transformation, into a semantically equivalent instrumented version. To implement the mentioned coverage metrics, we transform different code constructs in the language. In the following sections, we list and discuss these transformations.
 
