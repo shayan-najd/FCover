@@ -5,6 +5,7 @@
 \usepackage{hhline}
 \usepackage{array}
 \usepackage{color}
+\usepackage{tikz}
 \usepackage[dvips, bookmarks, colorlinks=false, pdfborder={0 0 0}, pdftitle={Code Coverage in Functional Concurrent Languages},
  pdfauthor={Shayan Najd Javadipour}, pdfsubject={Project Report}, pdfkeywords={}]{hyperref}
 \setcounter{secnumdepth}{0}
@@ -53,7 +54,7 @@ There are several different interpretations for ``node in the flow graph'' in th
 
 Often, control flow graphs (CFG) only model the execution flow of programs without considering the exception flows. Exception flow is an execution flow initiated by exceptions, errors or exit signals. For example, the term $throw$ $"error"$  branches the main execution flow by generating an exception. A complete CFG includes both the normal execution flows and the exception flows. Based on this definition of the CFG, we can redefine node coverage which is arguably more precise.
 
-In this project, we define a special version of node coverage targeting functional languages. Since almost everything in a functional language is an expression, comprehensive definition of ``node in the flow graph'' would be ``expression in a program''. It is important to define how big the size of the expression representing a node should be and it is decided by the type and number of the subexpressions, along with the desired coverage precision. Anyway, in our implementation, the size of the expression is not of importance because we use a special optimization later on.   
+In this project, we define a special version of node coverage targeting functional languages. Since almost everything in a functional language is an expression, comprehensive definition of ``node in the flow graph'' would be ``expression in a program''. 
 
 The CFG starts with the \emph{source node} and ends with the \emph{sink node}. Neither of them have any semantical operation.
 
@@ -63,8 +64,35 @@ For example, the expression $1/X$ is represented as three nodes in the CFG:
 \begin{enumerate}
  \item Virtual node: a fork with the condition $X\neq0$. It has an edge labeled $True$ to the normal node and an edge labeled $False$ to the exception node.
  \item Normal node: a node that represents the expression when there is no exception. It has an edge to the node that represents the next expression in the execution flow
- \item Exception node: is a node in the exception flow that represents the generation of the exception; for example, $throw$ $"Division by zero"$. It has an edge to either \emph{sink node} or to the initial node of the exception handling structure
+ \item Exception node: is a node in the exception flow that represents the generation of the exception; for example, $throw$ $"Division by zero"$. It has an edge to either \emph{sink node} or to the initial node of the exception handling structure (EHS)
 \end{enumerate}
+ \begin{center}
+\begin{figure}
+\centering
+ \begin{tikzpicture}[->,>=stealth,shorten >=1pt,auto,node distance=3cm,
+  thick,every node/.style={circle,fill=blue!20,draw}]
+
+  \node (in) {source};
+  \node (vn) [below of=in]   {$x \neq 0$};
+  \node (nn) [below right of=vn]   {$1 / x$ };
+  \node (en) [below left of=vn]   {$throw$};
+  \node (sn) [below right of=en]   {sink};
+
+  \path[dashed,every node/.style={font=\sffamily\small}]     
+    (in) edge node [left] {...} (vn);
+
+  \path[every node/.style={font=\sffamily\small}]
+    (vn) edge node [left] {True}  (nn)        
+         edge node [left] {False} (en);
+  \path[dashed,every node/.style={font=\sffamily\small}]     
+    (nn) edge node [left] {...}  (sn)  
+    (en) edge node [left] {EHS}  (sn);  
+      
+\end{tikzpicture}
+\caption{a CFG with virtual node}
+\label{fig:virtualnode}
+\end{figure}
+ \end{center}
 
 Here we can define two types of node coverage based on the complete graph. The first one considers the exception node as a normal node that should be covered in testing and the weaker form that does not include exception nodes in the coverage measurements. The virtual nodes are ignored in both types. Our implementation is of the first type, covering all the nodes including the exception nodes.
 
@@ -81,6 +109,48 @@ In a complete CFG, we define cut-points by:
 \end{enumerate}
 
 To achieve full node coverage, we need to make sure that all the leaves of these smaller parts are visited. That is because each leaf in these trees can uniquely define a path in the tree and when the execution flow reaches the beginning of the path, all the expressions in the path are executed.
+ 
+\begin{center} 
+\begin{figure}
+\centering
+\begin{tikzpicture}[->,>=stealth,shorten >=1pt,auto,node distance=25mm,scale=0.50,
+  thick,main node/.style={circle,fill=blue!20,draw},hidden node/.style={fill=white,draw=none,text=white}]
+
+  \node[main node] (in) {source};
+  \node[main node] (n1) [below of=in]   {node 1};  
+  \node[main node] (vn) [below of=n1]   {no error?};
+  \node[main node] (n2) [below right of=vn]   {node 2};
+  \node[main node] (bn) [below of=n2]   {branch};
+  \node[main node] (nt) [below right of=bn]   {node 3};
+  \node[main node] (nf) [below left of=bn]   {node 4};
+  \node[main node] (n5) [below right of=nf]   {node 5};
+  \node[main node] (en) [below left of=vn]   {error};
+  \node[main node] (sn) [below left of=n5]   {sink}; 
+ 
+
+ \path[every node/.style={font=\sffamily\small}]
+    (in) edge node [left] {} (n1)
+    (n1)  edge node [left] {} (vn)
+    (vn)  edge node [left] {T} (n2)
+          edge node [left] {F} (en)
+    (n2)  edge node [left] {} (bn)
+    (bn)  edge node [left] {T} (nt)
+          edge node [left] {F} (nf)
+    (nt)  edge node [left] {} (n5)
+    (nf)  edge node [left] {} (n5)
+    (n5)  edge node [left] {} (sn)
+    (en)  edge [bend right] node [left] {} (sn);  
+ \draw[-,red,dashed] (nf)++(0,-2) arc (270:360:2cm);
+ \draw[-,red,dashed] (nt)++(-2,0) arc (180:270:2cm);
+ \draw[-,red,dashed] (in)++(-1.4,-1.4) arc (225:315:2cm);  
+ \draw[-,red,dashed] (n2)++(-1.4,-1.4) arc (225:315:2cm);  
+ \draw[-,red,dashed] (en)++(-1.4,-1.4) arc (225:315:2cm);
+ \draw[-,red,dashed] (sn)++(-2,0) arc (180:0:2cm);      
+\end{tikzpicture}
+\caption{a sample CFG and cut-points}
+\label{fig:cutpoints}
+\end{figure}
+\end{center}
 
 In summary, in our implementation we monitor the execution of:
 
@@ -317,113 +387,156 @@ To be able to log required and useful information, we inject loggers to differen
 \subsection{Enclosing Errors}
 In the section about statement coverage, we mentioned that our interpretation of node in the complete control flow graph includes branched execution flows due to errors and exceptions. To log information related to exceptions we wrap each error producing, or exception producing, language construct inside a block implemented by try-catch to log the exception information. Below follows a list of possible expressions\cite{ErlangAbstractSyntax} and indication of whether they generate errors at runtime if the arguments do not return exceptions (errors):
 
-\begin{flushleft}
-\tablehead{}
-\begin{supertabular}{|m{13.188cm}|m{2.922cm}|}
+ 
+\begin{supertabular}{| p{13cm} | p{2cm} |} 
 \hline
-\color{black} Expression\ Type &
-\color{black} Possibility\ of\ Generating\ Run{}-Time\ Error\\\hline
-\color{black} literal &
-\color{black} No\\\hline
-\color{black} P\ =\ E &
-\color{black} Yes\\\hline
-\color{black} variable\ V &
-\color{black} No\\\hline
-\color{black} tuple\ skeleton\ \{E\_1,\ ...,\ E\_k\} &
-\color{black} No\\\hline
-\color{black} empty\ list\ [] &
-\color{black} No\\\hline
-\color{black} \ cons\ skeleton\ [E\_h\ {\textbar}\ E\_t] &
-\color{black} No\\\hline
-\color{black}
+Expression Type
+&
+Possibility of Run\-Time Error
+\\\hline
+literal
+&
+No
+\\\hline
+P = E 
+&
+Yes
+\\\hline
+variable V 
+&
+No
+\\\hline
+tuple skeleton
+\{E\_1, ..., E\_k\}
+& 
+No
+\\\hline
+empty\ list\ []
+&
+No
+\\\hline
+\ cons\ skeleton\ [E\_h\ {\textbar}\ E\_t]
+&
+No
+\\\hline
 binary\ constructor\ {\textless}{\textless}V\_1:Size\_1/TSL\_1,\ ...,\ V\_k:Size\_k/TSL\_k{\textgreater}{\textgreater}
 &
-\color{black} Yes\\\hline
-\color{black} E\_1\ Op\ E\_2,\ where\ Op\ is\ a\ binary\ operator &
-\color{black} Yes\\\hline
-\color{black} Op\ E\_0,\ where\ Op\ is\ a\ unary\ operator &
-\color{black} Yes\\\hline
-\color{black} \#Name\{Field\_1=E\_1,\ ...,\ Field\_k=E\_k\} &
-\color{black} No\\\hline
-\color{black} \ E\_0\#Name\{Field\_1=E\_1,\ ...,\ Field\_k=E\_k\} &
-\color{black} Yes\\\hline
-\color{black} \#Name.Field &
-\color{black} No\\\hline
-\color{black} E\_0\#Name.Field &
-\color{black} Yes\\\hline
-\color{black} catch\ E\_0 &
-\color{black} No\\\hline
-\color{black} E\_0(E\_1,\ ...,\ E\_k) &
-\color{black} No\\\hline
-\color{black} E\_m:E\_0(E\_1,\ ...,\ E\_k) &
-\color{black} Yes\\\hline
-\color{black}
-list\ comprehension\ [E\_0\ {\textbar}{\textbar}\ W\_1,\ ...,\ W\_k],\ where\ each\ W\_i\ is\ a\ generator\ or\ a\ filter
+Yes
+\\\hline
+E\_1\ Op\ E\_2,\ where\ Op\ is\ a\ binary\ operator
 &
-\color{black} Yes\\\hline
-\color{black}
-binary\ comprehension\ {\textless}{\textless}E\_0\ {\textbar}{\textbar}\ W\_1,\ ...,\ W\_k{\textgreater}{\textgreater},\ where\ each\ W\_i\ is\ a\ generator\ or\ a\ filter
+Yes
+\\\hline
+Op\ E\_0,\ where\ Op\ is\ a\ unary\ operator
 &
-\color{black} Yes\\\hline
-\color{black} begin\ B\ end,\ where\ B\ is\ a\ body &
-\color{black} No\\\hline
-\color{black}
+Yes
+\\\hline
+\#Name\{Field\_1=E\_1,\ ...,\ Field\_k=E\_k\}
+&
+No
+\\\hline
+\ E\_0\#Name\{Field\_1=E\_1,\ ...,\ Field\_k=E\_k\}
+&
+Yes
+\\\hline
+\#Name.Field
+&
+No
+\\\hline
+E\_0\#Name.Field
+&
+Yes
+\\\hline
+catch\ E\_0
+&
+No
+\\\hline
+E\_0(E\_1,\ ...,\ E\_k)
+&
+No
+\\\hline
+E\_m:E\_0(E\_1,\ ...,\ E\_k)
+&
+Yes
+\\\hline
+list\ comprehension\ [E\_0\ {\textbar}{\textbar}\ W\_1,\ ...,\ W\_k],\ where each W\_i is a generator or a filter
+&
+ Yes
+\\\hline
+binary comprehension {\textless}{\textless}E\_0\ {\textbar}{\textbar}\ W\_1,\ ...,\ W\_k{\textgreater}{\textgreater}, where each W\_i is a generator or a filter
+&
+ Yes
+\\\hline
+ begin\ B\ end,\ where\ B\ is\ a\ body
+&
+ No
+\\\hline
 if\ Ic\_1\ ;\ ...\ ;\ Ic\_k\ end,\ where\ each\ Ic\_i\ is\ an\ if\ clause\ 
 &
-\color{black} Yes\\\hline
-\color{black}
+ Yes
+\\\hline
 case\ E\_0\ of\ Cc\_1\ ;\ ...\ ;\ Cc\_k\ end,\ where\ E\_0\ is\ an\ expression\ and\ each\ Cc\_i\ is\ a\ case\ clause\ 
 &
-\color{black} Yes\\\hline
-\color{black}
+ Yes
+\\\hline
 try\ B\ catch\ Tc\_1\ ;\ ...\ ;\ Tc\_k\ end,\ where\ B\ is\ a\ body\ and\ each\ Tc\_i\ is\ a\ catch\ clause
 &
-\color{black} No\\\hline
-\color{black}
-try\ B\ of\ Cc\_1\ ;\ ...\ ;\ Cc\_k\ catch\ Tc\_1\ ;\ ...\ ;\ Tc\_n\ end,\ where\ B\ is\ a\ body,\ each\ Cc\_i\ is\ a\ case\ clause\ and\ each\ Tc\_jis\ a\ catch\ clause
+ No
+\\\hline
+try\ B\ of\ Cc\_1\ ;\ ...\ ;\ Cc\_k\ catch\ Tc\_1\ ;\ ...\ ;\ Tc\_n\ end,\ where\ B\ is\ a\ body,\ each\ Cc\_i\ is\ a\ case\ clause\ and\ each\ Tc\_j is\ a\ catch\ clause
 &
-\color{black} Yes\\\hline
-\color{black} try\ B\ after\ A\ end,\ where\ B\ and\ A\ are\ bodies\  &
-\color{black} No\\\hline
-\color{black}
+ Yes
+\\\hline
+try\ B\ after\ A\ end,\ where\ B\ and\ A\ are\ bodies
+&
+No
+\\\hline
 try\ B\ of\ Cc\_1\ ;\ ...\ ;\ Cc\_k\ after\ A\ end,\ where\ B\ and\ A\ are\ a\ bodies\ and\ each\ Cc\_i\ is\ a\ case\ clause
 &
-\color{black} Yes\\\hline
-\color{black}
+Yes
+\\\hline
 try\ B\ catch\ Tc\_1\ ;\ ...\ ;\ Tc\_k\ after\ A\ end,\ where\ B\ and\ A\ are\ bodies\ and\ each\ Tc\_i\ is\ a\ catch\ clause\ 
 &
-\color{black} No\\\hline
-\color{black}
+No
+\\\hline
 try\ B\ of\ Cc\_1\ ;\ ...\ ;\ Cc\_k\ catch\ Tc\_1\ ;\ ...\ ;\ Tc\_n\ after\ A\ end,\ where\ B\ and\ A\ are\ a\ bodies,\ each\ Cc\_i\ is\ a\ case\ clause\ and\ each\ Tc\_j\ is\ a\ catch\ clause
 &
-\color{black} Yes\\\hline
-\color{black}
+Yes
+\\\hline
 receive\ Cc\_1\ ;\ ...\ ;\ Cc\_k\ end,\ where\ each\ Cc\_i\ is\ a\ case\ clause
 &
-\color{black} No\\\hline
-\color{black}
+No
+\\\hline
 receive\ Cc\_1\ ;\ ...\ ;\ Cc\_k\ after\ E\_0\ {}-{\textgreater}\ B\_t\ end,\ where\ each\ Cc\_i\ is\ a\ case\ clause,\ E\_0\ is\ an\ expression\ and\ B\_t\ is\ a\ body
 &
-\color{black} Yes\\\hline
-\color{black} fun\ Name\ /\ Arity &
-\color{black} No\\\hline
-\color{black} fun\ Module:Name/Arity &
-\color{black} No\\\hline
-\color{black}
+Yes
+\\\hline
+fun\ Name\ /\ Arity
+&
+No
+\\\hline
+fun\ Module:Name/Arity
+&
+No
+\\\hline
 fun\ Fc\_1\ ;\ ...\ ;\ Fc\_k\ end\ where\ each\ Fc\_i\ is\ a\ function\ clause
 &
-\color{black} No\\\hline
-\color{black}
+No
+\\\hline
 query\ [E\_0\ {\textbar}{\textbar}\ W\_1,\ ...,\ W\_k]\ end,\ where\ each\ W\_i\ is\ a\ generator\ or\ a\ filter
 &
-\color{black} We\ do\ not\ support\\\hline
-\color{black} E\_0.Field,\ a\ Mnesia\ record\ access\ inside\ a\ query &
-\color{black} We\ do\ not\ support\ \\\hline
-\color{black} parenthesized\ expressions\ (\ E\_0\ ) &
-\color{black} No\\\hline
+We\ do\ not\ support
+\\\hline
+E\_0.Field,\ a\ Mnesia\ record\ access\ inside\ a\ query 
+&
+We\ do\ not\ support\ 
+\\\hline
+parenthesized\ expressions\ (\ E\_0\ )
+&
+No
+\\\hline
 \end{supertabular}
-\end{flushleft}
-
+ 
 To wrap all the above mentioned constructs which may raise an exception, we use the same code block. An example of transformed code for expression $1 * 9$  at line $3$ of function $f$ would be:
  
 \begin{lstlisting}
